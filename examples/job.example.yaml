@@ -16,8 +16,9 @@ metadata:
   name: ecr-registry-helper
   namespace: default
 spec:
-  schedule: "* * * * *"
-  successfulJobsHistoryLimit: 3
+  schedule: "0 */9 * * *" # every 9 hours
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
   suspend: false
   jobTemplate:
     spec:

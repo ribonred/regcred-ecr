@@ -60,6 +60,6 @@ docker push <your-docker-username>/<your-image-name>:<tag>
 ```
 
 
-see examples cronjob yaml file in [Link to job.example.yaml](./examples/job.example.yaml) directory
+see examples cronjob yaml file in [Link to job.example.yaml](./examples/job.example.yaml) directory. please adjust the namespace accordingly.
 
 
