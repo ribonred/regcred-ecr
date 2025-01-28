@@ -6,8 +6,8 @@ use aws_sdk_ecr::operation::get_authorization_token::GetAuthorizationTokenOutput
 use aws_sdk_ecr::types::AuthorizationData;
 use k8s_openapi::api::core::v1::{Namespace, Secret};
 use base64::engine::general_purpose::STANDARD;
-use base64::{Engine};
-use kube::{api::{Api, DeleteParams, PostParams}, runtime::wait::{await_condition, conditions}, Client, Error};
+use base64::Engine;
+use kube::{api::{Api, DeleteParams, PostParams}, Client, Error};
 mod creds;
 use log::{info, error, warn};
 use env_logger;
@@ -15,10 +15,16 @@ use k8s_openapi::ByteString;
 use serde_json::json;
 use dotenv::dotenv;
 use std::env;
+use chrono::Local;
 
 
 async fn create_docker_registry_secret(namespace: &str, secret_name: &String, server: &String, username: &str, password: &str) -> Result<Secret, kube::Error> {
-    let client = Client::try_default().await?;
+    let client = Client::try_default().await;
+    if let Err(e) = client {
+        error!("Failed to create client or connect kubernetes: {:?}", e);
+        return Err(e);
+    }
+    let client = client.unwrap();
     let secrets: Api<Secret> = Api::namespaced(client, namespace);
     if let Ok(_) = secrets.delete(secret_name, &DeleteParams::default()).await {
         warn!("Deleted secret: {}", secret_name);
@@ -114,7 +120,12 @@ async fn get_token() -> Option<String> {
 }
 
 async fn create_namespace(namespace_name: &str) -> Result<Namespace, kube::Error> {
-    let client = Client::try_default().await?;
+    let client = Client::try_default().await;
+    if let Err(e) = client {
+        error!("Failed to create client or connect kubernetes: {:?}", e);
+        return Err(e);
+    }
+    let client = client.unwrap();
     let namespaces: Api<Namespace> = Api::all(client);
     let ns = Namespace {
         metadata: kube::api::ObjectMeta {
@@ -156,5 +167,6 @@ async fn main() -> Result<(), Error> {
 
        }
     }
+    info!("secret updated at {}", Local::now().format("%Y-%m-%d %H:%M:%S"));
     Ok(())
 }

@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecr-registry-helper-cm
+  namespace: default
+data:
+  REGISTRY: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com
+  # the secret name that you want to distribute to multiple namespaces
+  SECRET_NAME: <your-desired-secret-name>
+  # for distributing the secret to multiple namespaces, separate them with commas
+  NAMESPACES: <comma-separated-namespaces-you-want-to-distribute-the-secret> # e.g. default,namespace1,namespace2
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-registry-helper
+  namespace: default
+spec:
+  schedule: "* * * * *"
+  successfulJobsHistoryLimit: 3
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: ecr-puller-sa
+          containers:
+          - name: ecr-registry-helper
+            image: <your image after building>
+            imagePullPolicy: IfNotPresent
+            envFrom:
+            - configMapRef:
+                name: ecr-registry-helper-cm
+          restartPolicy: Never
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecr-puller-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  namespace: default
+  name: role-full-access-to-secrets-namespaces
+rules:
+- apiGroups: [ "" ]
+  resources: [ "secrets" ]
+  resourceNames: [ "red-ecr-registry" ]
+  verbs: [ "delete" ]
+- apiGroups: [ "" ]
+  resources: [ "secrets" ]
+  verbs: [ "create" ]
+- apiGroups: [ "" ]
+  resources: [ "namespaces" ]
+  verbs: [ "create", "delete" ]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ecr-puller-role-binding
+subjects:
+- kind: ServiceAccount
+  name: ecr-puller-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: role-full-access-to-secrets-namespaces
